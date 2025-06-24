@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Admin Panel</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .option-card {
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 5px 0;
+      transition: all 0.3s ease;
+    }
+    .option-card.correct {
+      border-color: #28a745;
+      background-color: #d4edda;
+    }
+    .option-card:hover {
+      border-color: #007bff;
+      transform: translateY(-2px);
+    }
+    .success-message {
+      background: linear-gradient(45deg, #28a745, #20c997);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      text-align: center;
+      font-weight: bold;
+    }
+    .header-bar {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      padding: 15px 0;
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body class="bg-light">
+<div class="header-bar">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col">
+        <h1 class="mb-0">Quiz Admin Panel</h1>
+      </div>
+      <div class="col-auto">
+        <div class="d-flex align-items-center">
+          <span class="me-3">Welcome, <span id="username">Admin</span>!</span>
+          <a href="logout.php" class="btn btn-outline-light btn-sm">Logout</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container py-4">
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-primary text-white">Manual Add Question</div>
+        <div class="card-body">
+          <form action="quiz.php" method="POST">
+            <div class="mb-2">
+              <input name="question" class="form-control" placeholder="Question" required>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col"><input name="option_a" class="form-control" placeholder="Option A"></div>
+              <div class="col"><input name="option_b" class="form-control" placeholder="Option B"></div>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col"><input name="option_c" class="form-control" placeholder="Option C"></div>
+              <div class="col"><input name="option_d" class="form-control" placeholder="Option D"></div>
+            </div>
+            <div class="mb-2">
+              <input name="correct_option" class="form-control" placeholder="Correct Option (A/B/C/D)">
+            </div>
+            <div class="mb-2">
+              <input name="category" class="form-control" placeholder="Category (e.g. Math, Science)" required>
+            </div>
+            <button type="submit" class="btn btn-success w-100">Add Question</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-info text-white">AI Generate Question</div>
+        <div class="card-body">
+          <form id="aiForm">
+            <div class="mb-2">
+              <textarea name="prompt" class="form-control" rows="3" placeholder="Prompt for AI (e.g. Make a multiple choice question about JavaScript)"></textarea>
+            </div>
+            <div class="mb-2">
+              <input name="api_key" class="form-control d-none" value="" style="display:none;">
+            </div>
+            <button type="submit" class="btn btn-info w-100">Generate with AI</button>
+          </form>
+          <div id="aiResult" class="mt-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row mt-5">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-secondary text-white">All Questions</div>
+        <div class="card-body">
+          <div id="questionsTable">Loading...</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-dark text-white">API Key Management</div>
+        <div class="card-body">
+          <form id="apiKeyForm" class="mb-3">
+            <button type="submit" class="btn btn-primary w-100">Generate New API Key</button>
+          </form>
+          <div id="apiKeysList">Loading...</div>
+          <div class="small text-muted mt-2">API keys are for external users to access the API. Admin panel does not require API key.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Load current user's username
+function loadUsername() {
+  fetch('get_user.php')
+    .then(res => res.json())
+    .then(data => {
+      if (data.username) {
+        document.getElementById('username').textContent = data.username;
+      }
+    })
+    .catch(() => {
+      // Keep default "Admin" if failed
+    });
+}
+loadUsername();
+
+// Load all questions
+function loadQuestions() {
+  fetch('quiz.php')
+    .then(res => res.json())
+    .then(data => {
+      if (data.error && data.error.includes('Authentication')) {
+        window.location.href = 'login.php';
+        return;
+      }
+      let html = `<table class='table table-bordered table-striped'><thead><tr><th>ID</th><th>Question</th><th>Category</th><th>Options</th><th>Correct</th></tr></thead><tbody>`;
+      data.forEach(q => {
+        html += `<tr><td>${q.id}</td><td>${q.question}</td><td>${q.category||''}</td><td>A: ${q.option_a}<br>B: ${q.option_b}<br>C: ${q.option_c}<br>D: ${q.option_d}</td><td>${q.correct_option}</td></tr>`;
+      });
+      html += '</tbody></table>';
+      document.getElementById('questionsTable').innerHTML = html;
+    })
+    .catch(() => {
+      document.getElementById('questionsTable').innerHTML = '<div class="text-danger">Failed to load questions.</div>';
+    });
+}
+loadQuestions();
+
+let latestApiKey = '';
+function loadApiKeys() {
+  fetch('keys.php')
+    .then(res => res.json())
+    .then(data => {
+      let html = '<ul class="list-group">';
+      data.forEach(key => {
+        html += `<li class="list-group-item">${key.api_key}</li>`;
+      });
+      html += '</ul>';
+      document.getElementById('apiKeysList').innerHTML = html;
+      if (data.length > 0) latestApiKey = data[0].api_key;
+    })
+    .catch(() => {
+      document.getElementById('apiKeysList').innerHTML = '<div class="text-danger">Failed to load API keys.</div>';
+    });
+}
+loadApiKeys();
+
+document.getElementById('apiKeyForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  fetch('keys.php', { method: 'POST' })
+    .then(res => res.json())
+    .then(() => loadApiKeys());
+});
+
+// AI Form submit
+const aiForm = document.getElementById('aiForm');
+aiForm.addEventListener('submit', function(e) {
+  e.preventDefault();
+  const formData = new FormData(aiForm);
+  const prompt = formData.get('prompt');
+  document.getElementById('aiResult').innerHTML = '<div class="text-info">Generating...</div>';
+  fetch('generate.php', {
+    method: 'POST',
+    headers: latestApiKey ? { 'Api-Key': latestApiKey } : {},
+    body: new URLSearchParams({prompt})
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data && data.success) {
+      // Show success message and formatted question
+      let resultHtml = `<div class="success-message">${data.message}</div>`;
+      resultHtml += `<div class="card mt-3">`;
+      resultHtml += `<div class="card-header bg-success text-white">Generated Question</div>`;
+      resultHtml += `<div class="card-body">`;
+      resultHtml += `<h6 class="card-title">${data.question}</h6>`;
+      resultHtml += `<div class="mt-3">`;
+      
+      // Display options in a beautiful format
+      Object.keys(data.options).forEach(option => {
+        const isCorrect = option === data.correct_option;
+        const optionClass = isCorrect ? 'option-card correct' : 'option-card';
+        resultHtml += `<div class="${optionClass}">`;
+        resultHtml += `<strong>${option}:</strong> ${data.options[option]}`;
+        if (isCorrect) {
+          resultHtml += ` <span class="badge bg-success ms-2">Correct</span>`;
+        }
+        resultHtml += `</div>`;
+      });
+      
+      resultHtml += `</div>`;
+      resultHtml += `<div class="mt-3"><strong>Category:</strong> ${data.category}</div>`;
+      resultHtml += `</div></div>`;
+      
+      document.getElementById('aiResult').innerHTML = resultHtml;
+      loadQuestions(); // Refresh questions list
+    } else {
+      document.getElementById('aiResult').innerHTML = `<div class="alert alert-danger">${data.error || 'AI generation failed.'}</div>`;
+    }
+  })
+  .catch(() => {
+    document.getElementById('aiResult').innerHTML = '<div class="alert alert-danger">AI generation failed.</div>';
+  });
+});
+</script>
+</body>
+</html>
