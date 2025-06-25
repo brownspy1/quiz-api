@@ -3,7 +3,7 @@
 ## Overview
 This API provides access to a quiz database with AI-powered question generation capabilities. Users can retrieve questions, filter by categories, and generate new questions using AI.
 
-**Base URL:** `[http://your-domain.com/quiz-api/](https://api.umaars.com/quiz.php)`
+**Base URL:** `[https://api.umaars.com/quiz.php]`
 
 ---
 
